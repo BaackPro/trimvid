@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 """
 Created on Sat Oct 18 12:53:39 2025
@@ -61,6 +62,11 @@ a[href*="streamlit.io"] {
 .block-container {
     padding-top: 1rem;
     padding-bottom: 1rem;
+}
+
+/* Styles pour forcer l'ouverture de la sidebar */
+.sidebar-open {
+    transform: translateX(0) !important;
 }
 </style>
 """
@@ -244,63 +250,82 @@ st.markdown("""
         
         /* Ajustements pour la sidebar sur mobile */
         section[data-testid="stSidebar"] {
-            width: 100% !important;
-            min-width: 100% !important;
-        }
-        
-        /* Forcer l'affichage de la sidebar sur mobile */
-        .css-1d391kg {
-            width: 100% !important;
-        }
-        
-        /* Ajuster le contenu principal sur mobile */
-        .main .block-container {
-            padding-top: 1rem;
-            padding-bottom: 1rem;
+            width: 85% !important;
+            min-width: 85% !important;
         }
     }
     
-    /* Bouton pour ouvrir/fermer la sidebar sur mobile */
-    .mobile-sidebar-toggle {
-        display: none;
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        z-index: 9999;
-        background: #FF6B35;
+    /* Style pour le bouton Paramètres */
+    .settings-button-container {
+        text-align: center;
+        margin: 1rem 0 2rem 0;
+    }
+    
+    .settings-button {
+        background-color: #FF6B35;
         color: white;
         border: none;
-        border-radius: 50%;
-        width: 50px;
-        height: 50px;
-        font-size: 1.5rem;
+        padding: 0.75rem 2rem;
+        border-radius: 0.5rem;
+        font-weight: bold;
+        font-size: 1.1rem;
         cursor: pointer;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+        transition: all 0.3s ease;
+        margin: 0.5rem 0;
+        width: auto;
+        min-width: 280px;
     }
     
-    @media (max-width: 768px) {
-        .mobile-sidebar-toggle {
-            display: block;
-        }
-        
-        /* Cacher la sidebar par défaut sur mobile et la montrer quand active */
-        section[data-testid="stSidebar"] {
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-        }
-        
-        section[data-testid="stSidebar"].sidebar-open {
-            transform: translateX(0);
-        }
+    .settings-button:hover {
+        background-color: #E55A2B;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
     }
     
-    /* Réduire l'espacement global */
-    .stApp {
-        margin-top: -30px;
+    /* Cacher le bouton mobile en haut à gauche */
+    .mobile-sidebar-toggle {
+        display: none !important;
     }
-    .block-container {
-        padding-top: 0.5rem;
-        padding-bottom: 0.5rem;
+    
+    /* Styles pour les paramètres qui s'ouvrent en bas du bouton */
+    .settings-container {
+        background-color: #f8f9fa;
+        border: 1px solid #e0e0e0;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-top: 1rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .settings-section {
+        margin-bottom: 1.5rem;
+    }
+    
+    .settings-title {
+        color: #FF6B35;
+        font-weight: bold;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Style pour le texte d'avertissement */
+    .settings-warning {
+        text-align: center;
+        font-size: 0.85rem;
+        color: #FF6B35;
+        background-color: #FFF5F0;
+        border: 1px solid #FFE0D6;
+        border-radius: 0.3rem;
+        padding: 0.5rem;
+        margin-top: 0.5rem;
+        margin-bottom: 1rem;
+        font-style: italic;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -382,22 +407,27 @@ def compress_video(input_path, output_path, crf=23, preset='medium', audio_quali
         return False, f"Erreur inattendue: {str(e)}"
 
 def main():
-    # Gestion de l'état de la sidebar pour mobile
-    if 'sidebar_open' not in st.session_state:
-        st.session_state.sidebar_open = False
-
-    # Bouton toggle pour mobile
+    # JavaScript pour gérer l'ouverture de la sidebar
     st.markdown(f'''
-    <button class="mobile-sidebar-toggle" onclick="toggleSidebar()">⚙️</button>
     <script>
-    function toggleSidebar() {{
+    function openSidebar() {{
+        // Cette fonction ouvre la sidebar Streamlit
         const sidebar = document.querySelector('[data-testid="stSidebar"]');
         if (sidebar) {{
-            sidebar.classList.toggle('sidebar-open');
+            // Forcer l'ouverture de la sidebar
+            sidebar.style.transform = 'translateX(0)';
+            sidebar.style.visibility = 'visible';
+            sidebar.style.width = 'auto';
+            
+            // Ajouter une classe pour confirmer l'ouverture
+            sidebar.classList.add('sidebar-open');
+            
+            // Déclencher l'événement de redimensionnement pour Streamlit
+            window.dispatchEvent(new Event('resize'));
         }}
         
-        // Envoyer un message à Streamlit pour mettre à jour l'état
-        window.parent.postMessage({{type: 'TOGGLE_SIDEBAR'}}, '*');
+        // Afficher un message de débogage dans la console
+        console.log("Bouton Paramètres cliqué - Sidebar devrait s'ouvrir");
     }}
     
     // Cacher tous les éléments GitHub et Streamlit
@@ -418,26 +448,23 @@ def main():
         const footer = document.querySelector('footer');
         if (footer) footer.style.display = 'none';
         
-        // Réduire l'espace en haut
-        const mainContainer = document.querySelector('.main');
-        if (mainContainer) {{
-            mainContainer.style.paddingTop = '0';
-        }}
-    }});
-    
-    // Écouter les messages pour toggle la sidebar
-    window.addEventListener('message', function(event) {{
-        if (event.data.type === 'TOGGLE_SIDEBAR') {{
+        // Vérifier si la sidebar est déjà ouverte au chargement
+        setTimeout(function() {{
             const sidebar = document.querySelector('[data-testid="stSidebar"]');
-            if (sidebar) {{
-                sidebar.classList.toggle('sidebar-open');
+            if (sidebar && window.innerWidth > 768) {{
+                sidebar.style.transform = 'translateX(0)';
+                sidebar.style.visibility = 'visible';
             }}
-        }}
+        }}, 1000);
     }});
     </script>
     ''', unsafe_allow_html=True)
 
-    # Sidebar - Toujours visible maintenant
+    # Initialisation de l'état pour le bouton paramètres
+    if 'show_settings' not in st.session_state:
+        st.session_state.show_settings = False
+
+    # Sidebar
     with st.sidebar:
         # Promotion du site web
         st.markdown("""
@@ -516,7 +543,7 @@ def main():
         - Stockage temporaire uniquement
         """)
 
-    # Zone principale - Titre principal sans espace excessif
+    # Zone principale - Titre principal
     st.markdown("""
     <div style="text-align: center; padding: 0.5rem 0 1rem 0;">
         <h1 class="main-header">TrimVid<span class="pro-text"> Pro</span></h1>
@@ -534,7 +561,87 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Vérification de FFmpeg - Version corrigée pour le cloud
+    # Bouton Paramètres de compression - CORRECTION PRINCIPALE
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("⚙️ Paramètres de Compression", key="settings_button", use_container_width=True):
+            st.session_state.show_settings = not st.session_state.show_settings
+            st.rerun()
+    
+    # Texte d'avertissement ajouté sous le bouton
+    st.markdown("""
+    <div class="settings-warning">
+        ⚠️ Paramètres par défaut Actifs (Recommandé si vous êtes débutant en traitement vidéo)
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Affichage des paramètres en dessous du bouton
+    if st.session_state.show_settings:
+        with st.container():
+            st.markdown('<div class="settings-container">', unsafe_allow_html=True)
+            st.markdown('<div class="settings-title">⚙️ PARAMÈTRES DE COMPRESSION</div>', unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown('<div class="settings-section">', unsafe_allow_html=True)
+                st.subheader("🎯 Qualité Vidéo")
+                quality_option = st.selectbox(
+                    "Niveau de qualité",
+                    ["Haute qualité (CRF 18)", "Équilibré (CRF 23)", "Compression élevée (CRF 26)", "Personnalisé"],
+                    index=1,
+                    key="main_quality"
+                )
+                
+                if quality_option == "Personnalisé":
+                    crf = st.slider("CRF (Constant Rate Factor)", 18, 28, 23, 
+                                   help="Plus bas = meilleure qualité, Plus haut = plus de compression",
+                                   key="main_crf")
+                else:
+                    crf_map = {
+                        "Haute qualité (CRF 18)": 18,
+                        "Équilibré (CRF 23)": 23,
+                        "Compression élevée (CRF 26)": 26
+                    }
+                    crf = crf_map[quality_option]
+                
+                st.subheader("⚡ Vitesse")
+                preset = st.selectbox(
+                    "Préréglage de compression",
+                    ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"],
+                    index=5,
+                    help="Plus rapide = fichier plus gros, Plus lent = meilleure compression",
+                    key="main_preset"
+                )
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            with col2:
+                st.markdown('<div class="settings-section">', unsafe_allow_html=True)
+                st.subheader("🎵 Audio")
+                audio_quality = st.slider("Qualité audio (kbps)", 64, 320, 128, key="main_audio")
+                
+                st.subheader("📊 Résumé des paramètres")
+                st.write(f"**CRF:** {crf}")
+                st.write(f"**Preset:** {preset}")
+                st.write(f"**Audio:** {audio_quality} kbps")
+                
+                # Indicateur visuel de qualité
+                if crf <= 20:
+                    st.success("🎯 Qualité Excellente")
+                elif crf <= 23:
+                    st.info("⚖️ Qualité Équilibrée")
+                else:
+                    st.warning("💾 Compression Élevée")
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Bouton pour fermer les paramètres
+            if st.button("✓ Appliquer les paramètres", key="apply_settings", use_container_width=True):
+                st.session_state.show_settings = False
+                st.rerun()
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Vérification de FFmpeg
     ffmpeg_available = check_ffmpeg()
     
     if not ffmpeg_available:
@@ -630,12 +737,6 @@ def main():
                 st.warning("💾 Compression Élevée")
         else:
             st.info("📤 Téléversez une vidéo pour voir les estimations")
-            
-        # Section services professionnels
-        st.markdown("---")
-        st.markdown("""
-        
-        """, unsafe_allow_html=True)
     
     # Bouton de compression
     if uploaded_file is not None and (uploaded_file.size / (1024 * 1024)) <= 200:
