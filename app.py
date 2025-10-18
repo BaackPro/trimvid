@@ -5,10 +5,6 @@ Created on Sat Oct 18 12:53:39 2025
 @author: prince CHABI
 """
 
-# -*- coding: utf-8 -*-
-"""
-Application Web TrimVid Pro - Compresseur Vidéo Professionnel
-"""
 import streamlit as st
 import subprocess
 import os
@@ -25,12 +21,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Cacher le menu Streamlit par défaut et le footer
+# Cacher TOUS les éléments Streamlit par défaut
 hide_streamlit_style = """
 <style>
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header {visibility: hidden;}
+.stDeployButton {display:none;}
+#stDecoration {display:none;}
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -197,6 +195,14 @@ st.markdown("""
         padding: 1rem;
         margin: 1rem 0;
         color: #721c24;
+    }
+    
+    /* Cacher spécifiquement les éléments GitHub/Streamlit */
+    .viewerBadge_container__1QSob {
+        display: none !important;
+    }
+    [data-testid="stDeployButton"] {
+        display: none !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -682,7 +688,7 @@ def main():
         - Réduisez la taille de la vidéo (< 100MB)
         
         **❌ Fichier trop volumineux :**
-        - La limite est de 200MB sur notre Cloud
+        - La limite est de 200MB sur Streamlit Cloud
         - Compressez d'abord avec un outil local si nécessaire
         
         **❌ Timeout pendant la compression :**
