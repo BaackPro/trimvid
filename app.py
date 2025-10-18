@@ -29,6 +29,12 @@ footer {visibility: hidden;}
 header {visibility: hidden;}
 .stDeployButton {display:none;}
 #stDecoration {display:none;}
+.viewerBadge_container__1QSob {
+    display: none !important;
+}
+[data-testid="stDeployButton"] {
+    display: none !important;
+}
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -196,14 +202,6 @@ st.markdown("""
         margin: 1rem 0;
         color: #721c24;
     }
-    
-    /* Cacher spécifiquement les éléments GitHub/Streamlit */
-    .viewerBadge_container__1QSob {
-        display: none !important;
-    }
-    [data-testid="stDeployButton"] {
-        display: none !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -282,19 +280,6 @@ def compress_video(input_path, output_path, crf=23, preset='medium', audio_quali
         return False, "La compression a pris trop de temps (timeout de 5 minutes)"
     except Exception as e:
         return False, f"Erreur inattendue: {str(e)}"
-
-def load_logo():
-    """Charge le logo de l'application"""
-    try:
-        # Essayer de charger le logo depuis le chemin spécifié
-        logo_path = "images/logo/trimvid.jpg"
-        if os.path.exists(logo_path):
-            return open(logo_path, "rb").read()
-        else:
-            # Créer un logo temporaire avec du texte si le fichier n'existe pas
-            return None
-    except Exception as e:
-        return None
 
 def main():
     # Sidebar
@@ -376,25 +361,9 @@ def main():
         - Stockage temporaire uniquement
         """)
 
-    # Zone principale - En-tête avec logo centré au-dessus du titre
-    st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-    
-    logo_data = load_logo()
-    if logo_data:
-        st.image(logo_data, width=150)
-    else:
-        # Logo de secours
-        st.markdown("""
-        <div style="text-align: center; margin-bottom: 1rem;">
-            <div style="font-size: 4rem; color: #FF6B35;">🎬</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Titre principal
+    # Zone principale - Titre principal sans logo
     st.markdown("""
-    <div style="text-align: center; padding: 1rem 0 2rem 0;">
+    <div style="text-align: center; padding: 2rem 0 2rem 0;">
         <h1 class="main-header">TrimVid<span class="pro-text"> Pro</span></h1>
         <div class="professional-title">
             APPLICATION WEB TRIMVID PRO - COMPRESSEUR VIDÉO PROFESSIONNEL
@@ -416,13 +385,13 @@ def main():
     if not ffmpeg_available:
         st.markdown("""
         <div class="warning-box">
-            <strong>⚠️ FFmpeg n'a pas pu être vérifié</strong><br>
+            <strong>⚠️ TrimVid n'a pas pu être vérifié</strong><br>
             L'application va quand même essayer de fonctionner. 
             Si la compression échoue, cela peut être dû à une limitation de la plateforme cloud.
         </div>
         """, unsafe_allow_html=True)
     else:
-        st.success("✅ FFmpeg est disponible - Prêt pour la compression !")
+        st.success("✅ TrimVid est disponible - Prêt pour la compression !")
     
     # Zone principale - Contenu
     col1, col2 = st.columns([2, 1])
