@@ -1,0 +1,70 @@
+
+{
+  "name": "trimvid-pro-website",
+  "version": "1.0.0",
+  "description": "Site vitrine pour l'application TrimVid Pro - Compresseur Vidéo Professionnel",
+  "main": "index.html",
+  "scripts": {
+    "dev": "live-server --port=3000 --no-browser",
+    "build": "echo 'No build process needed for static site'",
+    "preview": "live-server --port=3000 --no-browser",
+    "deploy": "echo 'Deploy to Netlify via drag & drop or git'",
+    "lint:html": "html-validate *.html",
+    "lint:css": "stylelint \"*.css\"",
+    "test": "echo 'No tests specified'"
+  },
+  "keywords": [
+    "video",
+    "compression",
+    "converter",
+    "web-app",
+    "streamlit",
+    "static-site",
+    "netlify"
+  ],
+  "author": {
+    "name": "Sunny",
+    "email": "contact@trimvidpro.com",
+    "url": "https://trimvidpro.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/trimvid-pro-website.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/trimvid-pro-website/issues"
+  },
+  "homepage": "https://trimvidpro.netlify.app",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2",
+    "html-validate": "^8.1.0",
+    "stylelint": "^15.0.0",
+    "stylelint-config-standard": "^32.0.0"
+  },
+  "browserslist": [
+    "defaults",
+    "not ie < 11",
+    "maintained node versions"
+  ],
+  "staticFiles": {
+    "include": [
+      "**/*.html",
+      "**/*.css",
+      "**/*.js",
+      "**/*.json",
+      "**/*.txt",
+      "**/*.xml",
+      "**/*.ico",
+      "**/*.svg",
+      "**/*.png",
+      "**/*.jpg",
+      "**/*.jpeg",
+      "**/*.webp"
+    ]
+  }
+}
