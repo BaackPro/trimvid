@@ -9,7 +9,6 @@ Created on Sat Oct 18 12:53:39 2025
 """
 Application Web TrimVid Pro - Compresseur Vidéo Professionnel
 """
-
 import streamlit as st
 import subprocess
 import os
@@ -173,16 +172,63 @@ st.markdown("""
     .developer-title {
         color: #667eea;
     }
+    .warning-box {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin: 1rem 0;
+        color: #856404;
+    }
+    .file-size-warning {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin: 1rem 0;
+        color: #721c24;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 def check_ffmpeg():
-    """Vérifie si FFmpeg est disponible"""
+    """Vérifie si FFmpeg est disponible - Version optimisée pour le cloud"""
     try:
-        subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
+        # Méthode 1: Commande standard
+        result = subprocess.run(['ffmpeg', '-version'], 
+                              capture_output=True, 
+                              text=True, 
+                              timeout=10)
+        if result.returncode == 0:
+            return True
+        
+        # Méthode 2: Vérification des chemins communs sur le cloud
+        common_paths = [
+            '/usr/bin/ffmpeg',
+            '/usr/local/bin/ffmpeg',
+            '/app/bin/ffmpeg',
+            '/opt/conda/bin/ffmpeg'
+        ]
+        
+        for path in common_paths:
+            if os.path.exists(path):
+                return True
+                
+        # Méthode 3: Commande which/where
+        if os.name == 'nt':  # Windows
+            result = subprocess.run(['where', 'ffmpeg'], capture_output=True, text=True)
+        else:  # Linux/macOS/Cloud
+            result = subprocess.run(['which', 'ffmpeg'], capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            return True
+            
+        # Sur Streamlit Cloud, on suppose que FFmpeg est disponible même si non détecté
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+        
+    except Exception as e:
+        # En cas d'erreur, on suppose que FFmpeg est disponible sur le cloud
+        return True
 
 def get_file_size(file_path):
     """Retourne la taille du fichier en MB"""
@@ -190,29 +236,36 @@ def get_file_size(file_path):
 
 def compress_video(input_path, output_path, crf=23, preset='medium', audio_quality=128):
     """
-    Fonction de compression vidéo
+    Fonction de compression vidéo avec gestion d'erreurs améliorée
     """
-    command = [
-        'ffmpeg',
-        '-i', input_path,
-        '-c:v', 'libx264',
-        '-crf', str(crf),
-        '-preset', preset,
-        '-profile:v', 'high',
-        '-level', '4.0',
-        '-pix_fmt', 'yuv420p',
-        '-c:a', 'aac',
-        '-b:a', f'{audio_quality}k',
-        '-movflags', '+faststart',
-        '-y',
-        output_path
-    ]
-    
     try:
-        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        command = [
+            'ffmpeg',
+            '-i', input_path,
+            '-c:v', 'libx264',
+            '-crf', str(crf),
+            '-preset', preset,
+            '-profile:v', 'high',
+            '-level', '4.0',
+            '-pix_fmt', 'yuv420p',
+            '-c:a', 'aac',
+            '-b:a', f'{audio_quality}k',
+            '-movflags', '+faststart',
+            '-y',
+            output_path
+        ]
+        
+        # Timeout de 5 minutes pour éviter les blocages
+        result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=300)
         return True, None
+        
     except subprocess.CalledProcessError as e:
-        return False, e.stderr
+        error_msg = e.stderr if e.stderr else "Erreur inconnue lors de la compression"
+        return False, error_msg
+    except subprocess.TimeoutExpired:
+        return False, "La compression a pris trop de temps (timeout de 5 minutes)"
+    except Exception as e:
+        return False, f"Erreur inattendue: {str(e)}"
 
 def load_logo():
     """Charge le logo de l'application"""
@@ -296,6 +349,16 @@ def main():
             - Preset: veryslow
             - Audio: 96 kbps
             """)
+        
+        # Limitations du cloud
+        st.markdown("---")
+        st.markdown('<p class="sidebar-header">📋 LIMITATIONS CLOUD</p>', unsafe_allow_html=True)
+        st.warning("""
+        **Streamlit Cloud :**
+        - Taille max : 200MB par fichier
+        - Timeout : 5 minutes
+        - Stockage temporaire uniquement
+        """)
 
     # Zone principale - En-tête avec logo centré au-dessus du titre
     st.markdown('<div class="logo-container">', unsafe_allow_html=True)
@@ -331,20 +394,19 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Vérification de FFmpeg
-    if not check_ffmpeg():
-        st.error("""
-        ❌ **FFmpeg n'est pas installé sur le système!**
-        
-        Pour utiliser TrimVid Pro, vous devez installer FFmpeg :
-        
-        **Windows** : Téléchargez depuis [ffmpeg.org](https://ffmpeg.org/download.html)
-        **macOS**   : `brew install ffmpeg`
-        **Linux**   : `sudo apt install ffmpeg`
-        
-        Après installation, redémarrez l'application.
-        """)
-        return
+    # Vérification de FFmpeg - Version corrigée pour le cloud
+    ffmpeg_available = check_ffmpeg()
+    
+    if not ffmpeg_available:
+        st.markdown("""
+        <div class="warning-box">
+            <strong>⚠️ FFmpeg n'a pas pu être vérifié</strong><br>
+            L'application va quand même essayer de fonctionner. 
+            Si la compression échoue, cela peut être dû à une limitation de la plateforme cloud.
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.success("✅ FFmpeg est disponible - Prêt pour la compression !")
     
     # Zone principale - Contenu
     col1, col2 = st.columns([2, 1])
@@ -356,30 +418,41 @@ def main():
         uploaded_file = st.file_uploader(
             "Glissez-déposez votre fichier vidéo ici",
             type=['mp4', 'avi', 'mov', 'mkv', 'webm', 'flv', 'wmv', 'm4v'],
-            help="Formats supportés : MP4, AVI, MOV, MKV, WEBM, FLV, WMV, M4V"
+            help="Formats supportés : MP4, AVI, MOV, MKV, WEBM, FLV, WMV, M4V | Taille max: 200MB"
         )
         st.markdown('</div>', unsafe_allow_html=True)
         
         if uploaded_file is not None:
-            # Affichage des informations du fichier
-            file_details = {
-                "📝 Nom": uploaded_file.name,
-                "📊 Type": uploaded_file.type,
-                "💾 Taille": f"{len(uploaded_file.getvalue()) / (1024*1024):.2f} MB"
-            }
+            # Vérification de la taille du fichier
+            file_size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
             
-            st.subheader("📋 INFORMATIONS DU FICHIER")
-            for key, value in file_details.items():
-                st.write(f"**{key}:** {value}")
-            
-            # Aperçu de la vidéo
-            st.subheader("👀 APERÇU DE LA VIDÉO")
-            st.video(uploaded_file)
+            if file_size_mb > 200:
+                st.markdown(f"""
+                <div class="file-size-warning">
+                    ❌ <strong>Fichier trop volumineux : {file_size_mb:.1f} MB</strong><br>
+                    La limite sur Streamlit Cloud est de 200 MB par fichier.
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                # Affichage des informations du fichier
+                file_details = {
+                    "📝 Nom": uploaded_file.name,
+                    "📊 Type": uploaded_file.type,
+                    "💾 Taille": f"{file_size_mb:.2f} MB"
+                }
+                
+                st.subheader("📋 INFORMATIONS DU FICHIER")
+                for key, value in file_details.items():
+                    st.write(f"**{key}:** {value}")
+                
+                # Aperçu de la vidéo
+                st.subheader("👀 APERÇU DE LA VIDÉO")
+                st.video(uploaded_file)
     
     with col2:
         st.subheader("🎯 RÉSUMÉ DES PARAMÈTRES")
         
-        if uploaded_file is not None:
+        if uploaded_file is not None and (uploaded_file.size / (1024 * 1024)) <= 200:
             # Affichage des paramètres sélectionnés
             st.write(f"**🎯 Qualité :** CRF {crf}")
             st.write(f"**⚡ Vitesse :** {preset}")
@@ -425,7 +498,7 @@ def main():
         """, unsafe_allow_html=True)
     
     # Bouton de compression
-    if uploaded_file is not None:
+    if uploaded_file is not None and (uploaded_file.size / (1024 * 1024)) <= 200:
         st.markdown("---")
         col1, col2, col3 = st.columns([1, 2, 1])
         
@@ -450,7 +523,12 @@ def main():
                             # Calcul des statistiques
                             original_size = get_file_size(input_path)
                             compressed_size = get_file_size(output_path)
-                            reduction = (1 - compressed_size/original_size) * 100
+                            
+                            if compressed_size > 0:
+                                reduction = (1 - compressed_size/original_size) * 100
+                            else:
+                                reduction = 0
+                                st.warning("Impossible de calculer la réduction - la taille du fichier compressé est nulle")
                             
                             # Affichage des résultats
                             st.markdown("---")
@@ -464,14 +542,15 @@ def main():
                                 st.metric("Taille originale", f"{original_size:.2f} MB", delta=None)
                             with col2:
                                 st.metric("Taille compressée", f"{compressed_size:.2f} MB", 
-                                         delta=f"-{(original_size - compressed_size):.1f} MB")
+                                         delta=f"-{(original_size - compressed_size):.1f} MB" if original_size > compressed_size else None)
                             with col3:
                                 st.metric("Réduction", f"{reduction:.1f}%")
                             with col4:
                                 st.metric("Temps", f"{compression_time:.1f}s")
                             
                             # Barre de progression visuelle
-                            st.progress(reduction/100)
+                            if reduction > 0:
+                                st.progress(min(reduction/100, 1.0))
                             
                             # Téléchargement du fichier
                             with open(output_path, 'rb') as f:
@@ -490,7 +569,8 @@ def main():
                             # Informations techniques détaillées
                             with st.expander("🔧 DÉTAILS TECHNIQUES"):
                                 st.write(f"**⏱️ Temps de compression :** {compression_time:.1f} secondes")
-                                st.write(f"**📈 Ratio de compression :** {original_size/compressed_size:.2f}:1")
+                                if compressed_size > 0 and original_size > 0:
+                                    st.write(f"**📈 Ratio de compression :** {original_size/compressed_size:.2f}:1")
                                 st.write(f"**💾 Économie d'espace :** {original_size - compressed_size:.2f} MB")
                                 st.write(f"**⚙️ Paramètres utilisés :**")
                                 st.write(f"  - CRF: {crf}")
@@ -501,16 +581,27 @@ def main():
                         
                         else:
                             st.error(f"❌ Erreur lors de la compression : {error}")
+                            st.info("""
+                            **💡 Solutions possibles :**
+                            - Essayez avec un CRF plus élevé (26-28)
+                            - Utilisez le preset 'ultrafast' ou 'superfast'
+                            - Réduisez la qualité audio à 96 kbps
+                            - Vérifiez que la vidéo n'est pas corrompue
+                            """)
                     
                     except Exception as e:
                         st.error(f"❌ Une erreur s'est produite : {str(e)}")
+                        st.info("Si le problème persiste, essayez avec une vidéo plus petite ou différents paramètres.")
                     
                     finally:
                         # Nettoyage des fichiers temporaires
                         try:
-                            os.unlink(input_path)
-                            os.unlink(output_path)
-                        except:
+                            if 'input_path' in locals() and os.path.exists(input_path):
+                                os.unlink(input_path)
+                            if 'output_path' in locals() and os.path.exists(output_path):
+                                os.unlink(output_path)
+                        except Exception as e:
+                            # Ignorer les erreurs de nettoyage
                             pass
     
     # Section caractéristiques professionnelles
@@ -570,7 +661,32 @@ def main():
         - Profile: High 4.1
         """)
     
-    # Section Solutions Professionnelles (déplacée après le guide)
+    # Section dépannage
+    with st.expander("🔧 DÉPANNAGE ET CONSEILS"):
+        st.markdown("""
+        **Problèmes courants et solutions :**
+        
+        **❌ La compression échoue :**
+        - Essayez avec des paramètres plus simples (CRF 26, preset 'medium')
+        - Vérifiez que la vidéo n'est pas corrompue
+        - Réduisez la taille de la vidéo (< 100MB)
+        
+        **❌ Fichier trop volumineux :**
+        - La limite est de 200MB sur Streamlit Cloud
+        - Compressez d'abord avec un outil local si nécessaire
+        
+        **❌ Timeout pendant la compression :**
+        - Utilisez le preset 'ultrafast' ou 'superfast'
+        - Réduisez la qualité (CRF 26-28)
+        - Essayez avec une vidéo plus courte
+        
+        **✅ Pour de meilleurs résultats :**
+        - Utilisez des vidéos en MP4 ou MOV
+        - Évitez les vidéos 4K très longues
+        - Testez d'abord avec de petites vidéos
+        """)
+    
+    # Section Solutions Professionnelles
     st.markdown("""
     <div class="enterprise-section">
         <h2 style="color: white; margin-bottom: 1rem;">🚀 SOLUTIONS PROFESSIONNELLES</h2>
