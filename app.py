@@ -4,7 +4,6 @@ Created on Sat Oct 18 12:53:39 2025
 
 @author: prince CHABI
 """
-
 import streamlit as st
 import subprocess
 import os
@@ -35,11 +34,39 @@ header {visibility: hidden;}
 [data-testid="stDeployButton"] {
     display: none !important;
 }
+.stApp [data-testid="stToolbar"] {
+    display: none;
+}
+.stApp [data-testid="stDecoration"] {
+    display: none;
+}
+.stApp [data-testid="stStatusWidget"] {
+    display: none;
+}
+/* Cacher le badge GitHub et Streamlit Cloud */
+[data-testid="stAppViewContainer"] > footer {
+    display: none !important;
+}
+[class*="viewerBadge"] {
+    display: none !important;
+}
+a[href*="streamlit.io"] {
+    display: none !important;
+}
+
+/* Réduire l'espace en haut */
+.stApp {
+    margin-top: -50px;
+}
+.block-container {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# CSS personnalisé
+# CSS personnalisé avec responsive design
 st.markdown("""
 <style>
     .main-header {
@@ -60,7 +87,7 @@ st.markdown("""
         font-size: 1.4rem;
         color: #2C3E50;
         text-align: center;
-        margin-bottom: 2rem;
+        margin-bottom: 1rem;
         font-weight: 700;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         -webkit-background-clip: text;
@@ -202,6 +229,79 @@ st.markdown("""
         margin: 1rem 0;
         color: #721c24;
     }
+    
+    /* Styles responsives pour mobile */
+    @media (max-width: 768px) {
+        .main-header {
+            font-size: 2.5rem;
+        }
+        .pro-text {
+            font-size: 1.5rem;
+        }
+        .professional-title {
+            font-size: 1.1rem;
+        }
+        
+        /* Ajustements pour la sidebar sur mobile */
+        section[data-testid="stSidebar"] {
+            width: 100% !important;
+            min-width: 100% !important;
+        }
+        
+        /* Forcer l'affichage de la sidebar sur mobile */
+        .css-1d391kg {
+            width: 100% !important;
+        }
+        
+        /* Ajuster le contenu principal sur mobile */
+        .main .block-container {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+    }
+    
+    /* Bouton pour ouvrir/fermer la sidebar sur mobile */
+    .mobile-sidebar-toggle {
+        display: none;
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 9999;
+        background: #FF6B35;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+        cursor: pointer;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    @media (max-width: 768px) {
+        .mobile-sidebar-toggle {
+            display: block;
+        }
+        
+        /* Cacher la sidebar par défaut sur mobile et la montrer quand active */
+        section[data-testid="stSidebar"] {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        
+        section[data-testid="stSidebar"].sidebar-open {
+            transform: translateX(0);
+        }
+    }
+    
+    /* Réduire l'espacement global */
+    .stApp {
+        margin-top: -30px;
+    }
+    .block-container {
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -282,7 +382,62 @@ def compress_video(input_path, output_path, crf=23, preset='medium', audio_quali
         return False, f"Erreur inattendue: {str(e)}"
 
 def main():
-    # Sidebar
+    # Gestion de l'état de la sidebar pour mobile
+    if 'sidebar_open' not in st.session_state:
+        st.session_state.sidebar_open = False
+
+    # Bouton toggle pour mobile
+    st.markdown(f'''
+    <button class="mobile-sidebar-toggle" onclick="toggleSidebar()">⚙️</button>
+    <script>
+    function toggleSidebar() {{
+        const sidebar = document.querySelector('[data-testid="stSidebar"]');
+        if (sidebar) {{
+            sidebar.classList.toggle('sidebar-open');
+        }}
+        
+        // Envoyer un message à Streamlit pour mettre à jour l'état
+        window.parent.postMessage({{type: 'TOGGLE_SIDEBAR'}}, '*');
+    }}
+    
+    // Cacher tous les éléments GitHub et Streamlit
+    document.addEventListener('DOMContentLoaded', function() {{
+        // Supprimer les badges GitHub
+        const badges = document.querySelectorAll('[class*="viewerBadge"], [class*="github"]');
+        badges.forEach(badge => badge.style.display = 'none');
+        
+        // Supprimer les liens Streamlit
+        const links = document.querySelectorAll('a[href*="streamlit.io"], a[href*="github.com"]');
+        links.forEach(link => {{
+            if (link.textContent.includes('streamlit.io') || link.textContent.includes('github.com')) {{
+                link.style.display = 'none';
+            }}
+        }});
+        
+        // Supprimer le footer
+        const footer = document.querySelector('footer');
+        if (footer) footer.style.display = 'none';
+        
+        // Réduire l'espace en haut
+        const mainContainer = document.querySelector('.main');
+        if (mainContainer) {{
+            mainContainer.style.paddingTop = '0';
+        }}
+    }});
+    
+    // Écouter les messages pour toggle la sidebar
+    window.addEventListener('message', function(event) {{
+        if (event.data.type === 'TOGGLE_SIDEBAR') {{
+            const sidebar = document.querySelector('[data-testid="stSidebar"]');
+            if (sidebar) {{
+                sidebar.classList.toggle('sidebar-open');
+            }}
+        }}
+    }});
+    </script>
+    ''', unsafe_allow_html=True)
+
+    # Sidebar - Toujours visible maintenant
     with st.sidebar:
         # Promotion du site web
         st.markdown("""
@@ -361,9 +516,9 @@ def main():
         - Stockage temporaire uniquement
         """)
 
-    # Zone principale - Titre principal sans logo
+    # Zone principale - Titre principal sans espace excessif
     st.markdown("""
-    <div style="text-align: center; padding: 2rem 0 2rem 0;">
+    <div style="text-align: center; padding: 0.5rem 0 1rem 0;">
         <h1 class="main-header">TrimVid<span class="pro-text"> Pro</span></h1>
         <div class="professional-title">
             APPLICATION WEB TRIMVID PRO - COMPRESSEUR VIDÉO PROFESSIONNEL
@@ -657,7 +812,7 @@ def main():
         - Réduisez la taille de la vidéo (< 100MB)
         
         **❌ Fichier trop volumineux :**
-        - La limite est de 200MB sur Streamlit Cloud
+        - La limite est de 200MB sur notre Cloud
         - Compressez d'abord avec un outil local si nécessaire
         
         **❌ Timeout pendant la compression :**
