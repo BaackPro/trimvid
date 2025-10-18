@@ -25,6 +25,16 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Cacher le menu Streamlit par défaut et le footer
+hide_streamlit_style = """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+</style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 # CSS personnalisé
 st.markdown("""
 <style>
@@ -672,7 +682,7 @@ def main():
         - Réduisez la taille de la vidéo (< 100MB)
         
         **❌ Fichier trop volumineux :**
-        - La limite est de 200MB sur Streamlit Cloud
+        - La limite est de 200MB sur notre Cloud
         - Compressez d'abord avec un outil local si nécessaire
         
         **❌ Timeout pendant la compression :**
