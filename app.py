@@ -69,6 +69,40 @@ a[href*="streamlit.io"] {
 .sidebar-open {
     transform: translateX(0) !important;
 }
+
+/* CACHER LA SIDEBAR SUR MOBILE */
+@media (max-width: 768px) {
+    section[data-testid="stSidebar"] {
+        display: none !important;
+    }
+    
+    /* Afficher un message informatif */
+    .mobile-sidebar-message {
+        display: block !important;
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin: 1rem 0;
+        color: #856404;
+        text-align: center;
+    }
+}
+
+@media (min-width: 769px) {
+    .mobile-sidebar-message {
+        display: none !important;
+    }
+    
+    section[data-testid="stSidebar"] {
+        display: block !important;
+    }
+}
+
+/* Style pour le message d'information mobile */
+.mobile-sidebar-message {
+    display: none;
+}
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -249,10 +283,14 @@ st.markdown("""
             font-size: 1.1rem;
         }
         
-        /* Ajustements pour la sidebar sur mobile */
-        section[data-testid="stSidebar"] {
-            width: 85% !important;
-            min-width: 85% !important;
+        /* Ajustements pour le contenu principal sur mobile */
+        .main-content {
+            padding: 0.5rem;
+        }
+        
+        /* Ajustement des colonnes sur mobile */
+        .column-adjust {
+            margin-bottom: 1rem;
         }
     }
     
@@ -327,6 +365,15 @@ st.markdown("""
         margin-top: 0.5rem;
         margin-bottom: 1rem;
         font-style: italic;
+    }
+    
+    /* Style pour les paramètres mobiles */
+    .mobile-settings-container {
+        background: linear-gradient(135deg, #FF6B35, #FF8E53);
+        color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin: 1rem 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -491,7 +538,14 @@ def main():
     if 'show_settings' not in st.session_state:
         st.session_state.show_settings = False
 
-    # Sidebar
+    # Message d'information pour mobile
+    st.markdown("""
+    <div class="mobile-sidebar-message">
+        📱 <strong>Version Mobile</strong> - Utilisez le bouton "Paramètres de Compression" ci-dessous pour ajuster les paramètres
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Sidebar (uniquement visible sur desktop)
     with st.sidebar:
         # Promotion du site web
         st.markdown("""
@@ -511,12 +565,14 @@ def main():
         quality_option = st.selectbox(
             "Niveau de qualité",
             ["Haute qualité (CRF 18)", "Équilibré (CRF 23)", "Compression élevée (CRF 26)", "Personnalisé"],
-            index=1
+            index=1,
+            key="sidebar_quality"
         )
         
         if quality_option == "Personnalisé":
             crf = st.slider("CRF (Constant Rate Factor)", 18, 28, 23, 
-                           help="Plus bas = meilleure qualité, Plus haut = plus de compression")
+                           help="Plus bas = meilleure qualité, Plus haut = plus de compression",
+                           key="sidebar_crf")
         else:
             crf_map = {
                 "Haute qualité (CRF 18)": 18,
@@ -531,12 +587,13 @@ def main():
             "Préréglage de compression",
             ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"],
             index=5,
-            help="Plus rapide = fichier plus gros, Plus lent = meilleure compression"
+            help="Plus rapide = fichier plus gros, Plus lent = meilleure compression",
+            key="sidebar_preset"
         )
         
         # Qualité audio
         st.subheader("🎵 Audio")
-        audio_quality = st.slider("Qualité audio (kbps)", 64, 320, 128)
+        audio_quality = st.slider("Qualité audio (kbps)", 64, 320, 128, key="sidebar_audio")
         
         # Informations sur les paramètres
         st.markdown("---")
@@ -641,7 +698,7 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Affichage des paramètres en dessous du bouton
+    # Affichage des paramètres en dessous du bouton (pour mobile et desktop)
     if st.session_state.show_settings:
         with st.container():
             st.markdown('<div class="settings-container">', unsafe_allow_html=True)
