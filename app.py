@@ -12,6 +12,7 @@ import tempfile
 import time
 from pathlib import Path
 import base64
+import sys
 
 # Configuration de la page
 st.set_page_config(
@@ -330,44 +331,59 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+def install_ffmpeg():
+    """Tente d'installer FFmpeg si disponible"""
+    try:
+        # Sur Streamlit Cloud, FFmpeg est généralement préinstallé
+        # Mais on peut essayer de l'installer via apt si nécessaire
+        subprocess.run(['apt-get', 'update'], capture_output=True)
+        subprocess.run(['apt-get', 'install', '-y', 'ffmpeg'], capture_output=True)
+        return True
+    except:
+        return False
+
+def find_ffmpeg():
+    """Trouve le chemin de FFmpeg"""
+    # Chemins possibles pour FFmpeg
+    possible_paths = [
+        'ffmpeg',
+        '/usr/bin/ffmpeg',
+        '/usr/local/bin/ffmpeg',
+        '/app/bin/ffmpeg',
+        '/opt/conda/bin/ffmpeg',
+        './ffmpeg'
+    ]
+    
+    for path in possible_paths:
+        try:
+            result = subprocess.run([path, '-version'], capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                return path
+        except:
+            continue
+    
+    return None
+
 def check_ffmpeg():
     """Vérifie si FFmpeg est disponible - Version optimisée pour le cloud"""
     try:
-        # Méthode 1: Commande standard
-        result = subprocess.run(['ffmpeg', '-version'], 
-                              capture_output=True, 
-                              text=True, 
-                              timeout=10)
-        if result.returncode == 0:
-            return True
+        # Essayer de trouver FFmpeg
+        ffmpeg_path = find_ffmpeg()
+        if ffmpeg_path:
+            return True, ffmpeg_path
         
-        # Méthode 2: Vérification des chemins communs sur le cloud
-        common_paths = [
-            '/usr/bin/ffmpeg',
-            '/usr/local/bin/ffmpeg',
-            '/app/bin/ffmpeg',
-            '/opt/conda/bin/ffmpeg'
-        ]
+        # Si non trouvé, essayer d'installer
+        st.info("🔧 Installation de FFmpeg en cours...")
+        if install_ffmpeg():
+            ffmpeg_path = find_ffmpeg()
+            if ffmpeg_path:
+                return True, ffmpeg_path
         
-        for path in common_paths:
-            if os.path.exists(path):
-                return True
-                
-        # Méthode 3: Commande which/where
-        if os.name == 'nt':  # Windows
-            result = subprocess.run(['where', 'ffmpeg'], capture_output=True, text=True)
-        else:  # Linux/macOS/Cloud
-            result = subprocess.run(['which', 'ffmpeg'], capture_output=True, text=True)
-        
-        if result.returncode == 0:
-            return True
-            
-        # Sur Streamlit Cloud, on suppose que FFmpeg est disponible même si non détecté
-        return True
+        return False, None
         
     except Exception as e:
-        # En cas d'erreur, on suppose que FFmpeg est disponible sur le cloud
-        return True
+        st.warning(f"⚠️ Erreur lors de la vérification FFmpeg: {str(e)}")
+        return False, None
 
 def get_file_size(file_path):
     """Retourne la taille du fichier en MB"""
@@ -378,8 +394,14 @@ def compress_video(input_path, output_path, crf=23, preset='medium', audio_quali
     Fonction de compression vidéo avec gestion d'erreurs améliorée
     """
     try:
+        # Obtenir le chemin de FFmpeg
+        ffmpeg_available, ffmpeg_path = check_ffmpeg()
+        
+        if not ffmpeg_available:
+            return False, "FFmpeg n'est pas disponible sur ce système"
+        
         command = [
-            'ffmpeg',
+            ffmpeg_path,
             '-i', input_path,
             '-c:v', 'libx264',
             '-crf', str(crf),
@@ -394,15 +416,20 @@ def compress_video(input_path, output_path, crf=23, preset='medium', audio_quali
             output_path
         ]
         
+        # Afficher la commande pour le débogage
+        st.write(f"🔧 Commande exécutée: {' '.join(command)}")
+        
         # Timeout de 5 minutes pour éviter les blocages
         result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=300)
         return True, None
         
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr if e.stderr else "Erreur inconnue lors de la compression"
-        return False, error_msg
+        return False, f"Erreur de compression: {error_msg}"
     except subprocess.TimeoutExpired:
         return False, "La compression a pris trop de temps (timeout de 5 minutes)"
+    except FileNotFoundError:
+        return False, "FFmpeg n'a pas été trouvé. Vérifiez l'installation."
     except Exception as e:
         return False, f"Erreur inattendue: {str(e)}"
 
@@ -561,6 +588,45 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
+    # Vérification de FFmpeg au démarrage
+    ffmpeg_available, ffmpeg_path = check_ffmpeg()
+    
+    if not ffmpeg_available:
+        st.markdown("""
+        <div class="warning-box">
+            <strong>⚠️ FFmpeg n'est pas disponible</strong><br>
+            L'application ne peut pas fonctionner sans FFmpeg. 
+            Veuillez contacter l'administrateur pour installer FFmpeg sur le système.
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Instructions d'installation
+        with st.expander("🔧 Instructions d'installation FFmpeg"):
+            st.markdown("""
+            **Pour installer FFmpeg :**
+            
+            **Sur Ubuntu/Debian :**
+            ```bash
+            sudo apt update
+            sudo apt install ffmpeg
+            ```
+            
+            **Sur Streamlit Cloud :**
+            Ajoutez cette ligne à votre fichier `requirements.txt` :
+            ```
+            ffmpeg-python
+            ```
+            
+            **Alternative Python :**
+            Si FFmpeg n'est pas disponible, vous pouvez utiliser la bibliothèque `moviepy` :
+            ```python
+            pip install moviepy
+            ```
+            """)
+        return  # Arrêter l'exécution si FFmpeg n'est pas disponible
+    else:
+        st.success(f"✅ FFmpeg est disponible : {ffmpeg_path}")
+    
     # Bouton Paramètres de compression - CORRECTION PRINCIPALE
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -640,20 +706,6 @@ def main():
                 st.rerun()
             
             st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Vérification de FFmpeg
-    ffmpeg_available = check_ffmpeg()
-    
-    if not ffmpeg_available:
-        st.markdown("""
-        <div class="warning-box">
-            <strong>⚠️ TrimVid n'a pas pu être vérifié</strong><br>
-            L'application va quand même essayer de fonctionner. 
-            Si la compression échoue, cela peut être dû à une limitation de la plateforme cloud.
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.success("✅ TrimVid est disponible - Prêt pour la compression !")
     
     # Zone principale - Contenu
     col1, col2 = st.columns([2, 1])
