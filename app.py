@@ -682,7 +682,7 @@ def main():
             """)
         return  # Arrêter l'exécution si FFmpeg n'est pas disponible
     else:
-        st.success(f"✅ FFmpeg est disponible : {ffmpeg_path}")
+        st.success(f"✅ Trimvid Pro prêt pour la compression: {ffmpeg_path}")
     
     # Bouton Paramètres de compression - CORRECTION PRINCIPALE
     col1, col2, col3 = st.columns([1, 2, 1])
